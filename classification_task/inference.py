@@ -271,7 +271,7 @@ def load_model_and_processor(model_id: str, adapter_id: str):
 
     model = AutoModelForImageTextToText.from_pretrained(
         model_id,
-        torch_dtype=torch_dtype,
+        dtype=torch_dtype,
         device_map="auto" if torch.cuda.is_available() else None,
         low_cpu_mem_usage=True,
         token=hf_token,

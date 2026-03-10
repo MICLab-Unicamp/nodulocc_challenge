@@ -155,7 +155,7 @@ def load_model(model_id: str = MODEL_ID):
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
         trust_remote_code=True,
-        torch_dtype=get_torch_dtype(),
+        dtype=get_torch_dtype(),
         device_map=None,
     )
     device = "cuda" if torch.cuda.is_available() else "cpu"
