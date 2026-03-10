@@ -6,7 +6,7 @@
 - Hugging Face account, MedGemma 1.5 license acknowledgment, and API token with read permissions
 - GPU with 10GB+ for training and inference. The GPU used for training was an NVIDIA GeForce RTX 4090 with 24GB of VRAM.
 
-### Hugging Face API Token
+#### Hugging Face API Token
 To download the MedGemma 1.5 model, you need to have a Hugging Face account and accept the license agreement for MedGemma 1.5. 
 
 If you already have a Hugging Face account and a Hugging Face API token with read permissions, just acknowledge the license in https://huggingface.co/google/medgemma-1.5-4b-it and add the token to your `.env` file as `HF_TOKEN=your_token_here`. See the `.env.example` file for reference. 
@@ -55,3 +55,21 @@ trainer.train(resume_from_checkpoint="./checkpoints/medgemma-1.5-nodulocc-cls-ck
 ```
 
 [You can get the model checkpoint from this Google Drive link](https://drive.google.com/file/d/1I6tu9mFlv2b3Y4LVV_FIqSocZBvRnMkH/view?usp=sharing). This checkpoint was trained for 12 epochs using the same training script.
+
+## Localization Task — MedGemma 1.5
+### Pre-requisites
+- Python 3.10
+- Environment manager (e.g., Conda, Mamba)
+- GPU with 8GB+ for inference. The GPU used for training was an NVIDIA GeForce RTX 4090 with 24GB of VRAM.
+
+#### Environment Setup
+The environment can be set up using the following commands:
+```bash
+conda create -n chexagent2 python=3.10 -y
+conda activate chexagent2
+pip install -r localization_task/requirements.txt
+```
+
+### Inference
+```bash
+python localization_task/inference.py --input-dir ./data/test_images --output-dir ./outputs
