@@ -1,3 +1,7 @@
+# NoduLoCC2026 Challenge - Team MICLAB
+Team members:
+- Kristhian André Oliveira Aguilar (k298976@dac.unicamp.br)
+- Diedre Santos do Carmo (diedre@unicamp.br)
 
 ## Classification Task — MedGemma 1.5
 ### Pre-requisites
