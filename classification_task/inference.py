@@ -125,13 +125,13 @@ def parse_args() -> argparse.Namespace:
         "--low_percentile",
         type=float,
         default=0.5,
-        help="Lower percentile for 16-bit grayscale clipping.",
+        help="Lower percentile for grayscale clipping (applied to all bit depths).",
     )
     parser.add_argument(
         "--high_percentile",
         type=float,
         default=95.5,
-        help="Upper percentile for 16-bit grayscale clipping.",
+        help="Upper percentile for grayscale clipping (applied to all bit depths).",
     )
     return parser.parse_args()
 
@@ -145,24 +145,41 @@ def get_torch_dtype() -> torch.dtype:
     return torch.float32
 
 
-def to_uint8_percentile_clip(
+def percentile_clip_and_normalise(
     arr: np.ndarray,
     low_p: float = 0.5,
     high_p: float = 95.5,
 ) -> np.ndarray:
     """
-    Per-image clip to [low_p, high_p] percentiles, then rescale to [0, 255].
+    Clip a single-channel 2-D array to [low_p, high_p] percentiles and
+    rescale to uint8 [0, 255].
+
+    Applying this to 8-bit images as well removes tail outliers (e.g. burnt-in
+    annotations, detector edge artefacts) and re-stretches contrast to the
+    full 0-255 range, matching the normalisation seen during training.
+
+    Parameters
+    ----------
+    arr:
+        2-D float or integer array. Must be 2-D (single channel).
+    low_p, high_p:
+        Percentile bounds for clipping. Defaults match training preprocessing.
+
+    Returns
+    -------
+    uint8 ndarray of the same shape.
     """
-    arr = np.asarray(arr)
-
     if arr.ndim != 2:
-        raise ValueError(f"Expected 2D grayscale array, got shape={arr.shape}")
+        raise ValueError(f"Expected 2-D grayscale array, got shape {arr.shape}")
 
+    arr = arr.astype(np.float32)
     lo, hi = np.percentile(arr, [low_p, high_p])
-    if not np.isfinite(lo) or not np.isfinite(hi) or hi <= lo:
-        return np.zeros_like(arr, dtype=np.uint8)
 
-    clipped = np.clip(arr, lo, hi).astype(np.float32)
+    # Guard against flat images (e.g. all-zero padding frames)
+    if not (np.isfinite(lo) and np.isfinite(hi) and hi > lo):
+        return np.zeros(arr.shape, dtype=np.uint8)
+
+    clipped = np.clip(arr, lo, hi)
     scaled = (clipped - lo) / (hi - lo) * 255.0
     return np.round(scaled).astype(np.uint8)
 
@@ -173,37 +190,45 @@ def load_image_for_model(
     high_p: float = 95.5,
 ) -> Image.Image:
     """
-    Loads an image and returns an RGB PIL image suitable for the processor.
+    Load any supported image and return a normalised RGB PIL image.
 
-    If a grayscale image is stored as >8-bit (e.g. 16-bit PNG), applies the
-    same percentile clipping + uint8 conversion used in training.
+    Preprocessing pipeline
+    ----------------------
+    1. Read raw pixel data via PIL (preserving original bit depth).
+    2. For multi-channel images, convert to luminance (single channel) so that
+       the same clipping logic applies regardless of how the DICOM-to-PNG
+       export colourised the image.
+    3. Apply percentile clip + uint8 rescale via `percentile_clip_and_normalise`.
+       This step is intentionally applied to *all* images (not just 16-bit)
+       so that:
+         - 16-bit scanner images are correctly windowed into uint8.
+         - 8-bit images with tail outliers (burnt-in text, edge artefacts)
+           receive the same contrast stretching used during training.
+    4. Convert the resulting uint8 grayscale image to RGB (3-channel), which
+       is required by the MedGemma processor.
     """
     with Image.open(image_path) as img:
         arr = np.array(img)
 
-    if arr.ndim == 2:
-        if arr.dtype != np.uint8:
-            arr_u8 = to_uint8_percentile_clip(arr, low_p=low_p, high_p=high_p)
-            img = Image.fromarray(arr_u8, mode="L")
-        else:
-            img = Image.fromarray(arr.astype(np.uint8), mode="L")
-        return img.convert("RGB")
-
+    # --- Reduce to a single 2-D channel -----------------------------------
     if arr.ndim == 3:
-        if arr.dtype != np.uint8:
-            arr = arr.astype(np.float32)
-            lo, hi = np.percentile(arr, [low_p, high_p])
-            if not np.isfinite(lo) or not np.isfinite(hi) or hi <= lo:
-                arr_u8 = np.zeros(arr.shape, dtype=np.uint8)
-            else:
-                arr = np.clip(arr, lo, hi)
-                arr = (arr - lo) / (hi - lo) * 255.0
-                arr_u8 = np.round(arr).astype(np.uint8)
-            return Image.fromarray(arr_u8).convert("RGB")
+        # Use luminance weights if the image was stored as RGB/RGBA.
+        # This is more faithful than just taking channel 0 for colour images,
+        # and is a no-op for images that are RGB but actually grayscale.
+        pil_gray = Image.fromarray(arr).convert("L")
+        arr = np.array(pil_gray)          # now shape (H, W), dtype uint8
 
-        return Image.fromarray(arr.astype(np.uint8)).convert("RGB")
+    if arr.ndim != 2:
+        raise ValueError(
+            f"Unsupported image shape after channel reduction: {arr.shape} "
+            f"for {image_path}"
+        )
 
-    raise ValueError(f"Unsupported image shape for {image_path}: {arr.shape}")
+    # --- Percentile clip + rescale to uint8 (all bit depths) --------------
+    arr_u8 = percentile_clip_and_normalise(arr, low_p=low_p, high_p=high_p)
+
+    # --- Return as RGB PIL image ------------------------------------------
+    return Image.fromarray(arr_u8, mode="L").convert("RGB")
 
 
 def collect_image_paths(input_dir: Path, recursive: bool) -> list[Path]:
