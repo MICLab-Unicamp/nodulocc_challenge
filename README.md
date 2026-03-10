@@ -44,7 +44,7 @@ data/nodulocc/
 
 Then, run the training script:
 ```bash
-python classification_task/train_classification_medgemma.py
+python classification_task/train.py
 ```
 
 By default the training script will fine-tune the MedGemma 1.5 model from scratch. In case you want to continue training from a checkpoint, modify the `resume_from_checkpoint` argument in `trainer.train()` to point to the desired checkpoint directory. 
