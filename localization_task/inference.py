@@ -97,6 +97,13 @@ def percentile_clip_and_normalise(
     scaled = (clipped - lo) / (hi - lo) * 255.0
     return np.round(scaled).astype(np.uint8)
 
+def get_torch_dtype() -> torch.dtype:
+    if torch.cuda.is_available():
+        major, _ = torch.cuda.get_device_capability()
+        if major >= 8:
+            return torch.bfloat16
+        return torch.float16
+    return torch.float32
 
 def preprocess_image(
     image_path: Path,
@@ -148,11 +155,11 @@ def load_model(model_id: str = MODEL_ID):
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
         trust_remote_code=True,
-        torch_dtype=torch.bfloat16,
+        torch_dtype=get_torch_dtype(),
         device_map=None,
     )
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = model.to(device).to(torch.bfloat16)
+    model = model.to(device).to(get_torch_dtype())
     model.eval()
     print(f"Model loaded on: {device}")
     return tokenizer, model

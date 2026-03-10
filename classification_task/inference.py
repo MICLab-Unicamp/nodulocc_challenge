@@ -32,10 +32,12 @@ from dotenv import load_dotenv
 from PIL import Image
 from tqdm.auto import tqdm
 from transformers import AutoModelForImageTextToText, AutoProcessor
+from peft import PeftModel
 
 load_dotenv()
 
-DEFAULT_MODEL_ID = "k298976/medgemma-1.5-4b-it-nodulocc-cls"
+DEFAULT_MODEL_ID = "google/medgemma-1.5-4b-it"
+ADAPTER_ID = "k298976/medgemma-1.5-4b-it-nodulocc-cls-qlora-adapter"
 
 PROMPT = (
     "You are a radiology assistant. Determine whether this frontal chest X-ray "
@@ -80,6 +82,14 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=DEFAULT_MODEL_ID,
         help="Hugging Face model repo ID for the merged model.",
+    )
+    parser.add_argument(
+        "--adapter_id",
+        type=str,
+        default=ADAPTER_ID,
+        help=(
+            "Hugging Face model repo ID for the adapter. "
+        ),
     )
     parser.add_argument(
         "--batch_size",
@@ -255,7 +265,7 @@ def collect_image_paths(input_dir: Path, recursive: bool) -> list[Path]:
     return paths
 
 
-def load_model_and_processor(model_id: str):
+def load_model_and_processor(model_id: str, adapter_id: str):
     hf_token = os.getenv("HF_TOKEN") or None
     torch_dtype = get_torch_dtype()
 
@@ -266,6 +276,9 @@ def load_model_and_processor(model_id: str):
         low_cpu_mem_usage=True,
         token=hf_token,
     )
+
+    model = PeftModel.from_pretrained(model, adapter_id, token=hf_token)
+
     processor = AutoProcessor.from_pretrained(model_id, token=hf_token)
 
     processor.tokenizer.padding_side = "left"
@@ -391,7 +404,7 @@ def main() -> None:
     output_csv = args.output_dir / "classification_test_results.csv"
 
     print(f"Loading merged model from Hugging Face: {args.model_id}")
-    model, processor, device = load_model_and_processor(args.model_id)
+    model, processor, device = load_model_and_processor(args.model_id, args.adapter_id)
 
     a_token_id, b_token_id = resolve_ab_token_ids(processor)
     prompt_text = build_prompt_text(processor)
