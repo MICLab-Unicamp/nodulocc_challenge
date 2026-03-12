@@ -50,7 +50,7 @@ The dataset is heavily imbalanced, with approximately 95% negative (healthy) and
 - **Rotating balanced epoch sampler**: At each training epoch, all positive samples are included alongside a rotating, non-overlapping subset of negative samples of equal size. This ensures the model sees all negatives across epochs while maintaining a 1:1 class ratio within each epoch, avoiding both data waste and persistent imbalance.
 
 #### Training configuration
-- **Dataset split:** 80% training, 0.05% validation, 15% test (stratified by class).
+- **Dataset split:** 80% training, 5% validation, 15% test (stratified by class).
 - **Loss function:** Weighted cross-entropy (positive weight = 20, negative weight = 1)
 
 - **Batch size:** Effective batch size of 16 (batch size of 4 with gradient accumulation over 4 steps)
