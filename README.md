@@ -4,6 +4,32 @@ Team members:
 - Diedre Santos do Carmo (diedre@unicamp.br)
 - Letícia Rittner (lrittner@unicamp.br)
 
+## Table of Contents
+- [Method Summary](#method-summary)
+    - [Classification Task – Fine-tuned MedGemma 1.5](#classification-task--fine-tuned-medgemma-15)
+        - [Model](#model)
+        - [Fine-tuning approach](#fine-tuning-approach)
+        - [Addressing class imbalance](#addressing-class-imbalance)
+        - [Training configuration](#training-configuration)
+        - [Evaluation](#evaluation)
+        - [Computational resources](#computational-resources)
+    - [Localization Task – CheXagent-2 (Zero-shot)](#localization-task--chexagent-2-zero-shot)
+        - [Model](#model-1)
+        - [Pre-processing and inference pipeline](#pre-processing-and-inference-pipeline)
+        - [Training configuration](#training-configuration-1)
+        - [Computational resources](#computational-resources-1)
+- [How to Run](#how-to-run)
+    - [Classification Task — MedGemma 1.5](#classification-task-—-medgemma-15)
+        - [Pre-requisites](#pre-requisites)
+        - [Hugging Face API Token](#hugging-face-api-token)
+        - [Environment Setup](#environment-setup)
+        - [Inference](#inference)
+        - [Training](#training)
+    - [Localization Task — CheXagent-2 (Zero-shot)](#localization-task-—-chexagent-2-zero-shot)
+        - [Pre-requisites](#pre-requisites-1)
+        - [Environment Setup](#environment-setup-1)
+        - [Inference](#inference-1)
+
 ## Method Summary
 
 Vision-language models (VLMs) for chest X-ray analysis have rapidly become a strong research trend, especially for tasks such as report generation, abnormality classification, and weakly supervised localization. Motivated by this recent progress, our goal in this project was to evaluate whether modern medical VLMs can be effectively transferred to the NoduLoCC2026 challenge tasks, and how they behave under the practical constraints imposed by the challenge: severe class imbalance, limited localization supervision, and distribution shift between training and test data.
@@ -43,8 +69,6 @@ The table below summarizes the performance of the fine-tuned MedGemma 1.5 model 
 | Model | Precision | Recall | Specificity | F1    | ROC AUC | PR AUC |
 | --------------- | --------- | ------ | ----------- | ----- | ------- | ------ |
 | MedGemma 1.5    | 0.374     | 0.3621 | 0.9728      | 0.368 | 0.7864  | 0.2384 |
-
-
 
 #### Computational resources
 - **Parameters:** ~4B (base) + ~100M (QLoRA adapter)
@@ -130,7 +154,7 @@ For example:
 trainer.train(resume_from_checkpoint="./checkpoints/medgemma-1.5-nodulocc-cls-ckpt")
 ```
 
-[You can get the model checkpoint from this Google Drive link](https://drive.google.com/file/d/1I6tu9mFlv2b3Y4LVV_FIqSocZBvRnMkH/view?usp=sharing). This checkpoint was trained for 12 epochs using the same training script.
+[You can get the model checkpoint from this Google Drive link](https://drive.google.com/file/d/1I6tu9mFlv2b3Y4LVV_FIqSocZBvRnMkH/view?usp=sharing). This checkpoint was trained for 4400 steps.
 
 ### Localization Task — CheXagent-2 (Zero-shot)
 #### Pre-requisites
