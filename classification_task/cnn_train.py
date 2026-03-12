@@ -1065,7 +1065,15 @@ def main():
     if best_ckpt is None:
         best_ckpt = output_dir / format_best_checkpoint_name(
             args.best_metric, best_val)
-        torch.save(model.state_dict(), best_ckpt)
+        torch.save({
+                    "epoch": epoch,
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "scheduler_state_dict": scheduler.state_dict(),
+                    "best_metric_name": args.best_metric,
+                    "best_metric_value": best_val,
+                    "args": vars(args),
+                }, best_ckpt)
         print(f"No validation checkpoint was selected during training; "
               f"saved final model to {best_ckpt.name}.")
 
