@@ -24,13 +24,27 @@ The dataset is heavily imbalanced, with approximately 95% negative (healthy) and
 - **Rotating balanced epoch sampler**: At each training epoch, all positive samples are included alongside a rotating, non-overlapping subset of negative samples of equal size. This ensures the model sees all negatives across epochs while maintaining a 1:1 class ratio within each epoch, avoiding both data waste and persistent imbalance.
 
 #### Training configuration
+- **Dataset split:** 80% training, 0.05% validation, 15% test (stratified by class).
 - **Loss function:** Weighted cross-entropy (positive weight = 20, negative weight = 1)
+
+- **Batch size:** Effective batch size of 16 (batch size of 4 with gradient accumulation over 4 steps)
 
 - **Optimizer:** AdamW (fused)
 
 - **Learning rate scheduler:** Linear warmup (3% of steps) followed by linear decay; peak LR = 2×10⁻⁴
 
-- **Evaluation metrics:** Accuracy, balanced accuracy, sensitivity (recall), specificity, precision, F1, MCC, ROC-AUC, PR-AUC, Brier score.
+#### Evaluation
+For evaluation, we chose metrics that are robust to class imbalance and provide a comprehensive view of model performance. These include: Accuracy, balanced accuracy, sensitivity (recall), specificity, precision, F1, MCC, ROC-AUC, PR-AUC, Brier score.
+
+The checkpoint chosen for final evaluation was the last one (step 4400). This checkpoint was selected based on its strong performance across multiple metrics, particularly its balanced accuracy and F1 score, which are crucial for imbalanced classification tasks.
+
+The table below summarizes the performance of the fine-tuned MedGemma 1.5 model on the test set:
+
+| Model | Precision | Recall | Specificity | F1    | ROC AUC | PR AUC |
+| --------------- | --------- | ------ | ----------- | ----- | ------- | ------ |
+| MedGemma 1.5    | 0.374     | 0.3621 | 0.9728      | 0.368 | 0.7864  | 0.2384 |
+
+
 
 #### Computational resources
 - **Parameters:** ~4B (base) + ~100M (QLoRA adapter)
