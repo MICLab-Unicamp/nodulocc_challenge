@@ -14,15 +14,11 @@ Usage
         --input_dir  /path/to/images \\
         --output_dir /path/to/results
 
-Notes
------
-* The confidence column is set to 1.0 for every predicted point because the
-  model returns hard bounding-box predictions without a probability score.
-* Images are preprocessed with percentile clipping before inference to remove
-  tail outliers (burnt-in annotations, detector edge artefacts) and re-stretch
-  contrast. This is applied to all bit depths, not just 16-bit images.
-  The preprocessed image is written to a temp PNG so CheXagent-2's tokenizer
-  can load it via its expected file-path interface.
+    # Only accept boxes whose <|ref|> label matches "lung nodule" or "nodule":
+    python infer_localization.py \\
+        --input_dir  /path/to/images \\
+        --output_dir /path/to/results \\
+        --nodule_labels "lung nodule,nodule"
 """
 
 from __future__ import annotations
@@ -38,7 +34,6 @@ import numpy as np
 import pandas as pd
 import torch
 from PIL import Image
-from sklearn.cluster import DBSCAN
 from tqdm.auto import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -53,6 +48,10 @@ LOC_PROMPT = (
     "using bounding box coordinates"
 )
 SUPPORTED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"}
+
+# Default accepted <|ref|> labels (lowercased). Only used when
+# --nodule_labels is passed on the CLI; None means accept everything.
+DEFAULT_NODULE_LABELS: set[str] = {"lung nodule", "nodule"}
 
 # ---------------------------------------------------------------------------
 # Preprocessing
@@ -241,33 +240,58 @@ def _parse_box_string(box_str: str) -> list[float] | None:
     ]
 
 
-def parse_boxes_100(response: str, tokenizer) -> list[list[float]]:
-    """Extract normalised [0-100] bounding boxes from the model response."""
-    boxes: list[list[float]] = []
+def parse_boxes_100(
+    response: str,
+    tokenizer,
+    nodule_labels: set[str] | None = None,
+) -> list[list[float]]:
+    """Extract normalised [0-100] bounding boxes from the model response.
 
-    # Primary: official tokenizer helper
+    Parameters
+    ----------
+    response:
+        Raw text output from the model.
+    tokenizer:
+        CheXagent-2 tokenizer; must support ``to_list_format``.
+    nodule_labels:
+        Optional set of lowercase label strings to accept. When provided, a
+        box is only kept when the immediately preceding ``<|ref|>`` label
+        (lowercased, stripped) is a member of this set. When *None*, all
+        parsed boxes are kept regardless of label.
+
+    Notes
+    -----
+    The regex fallback that matched 4-tuple coordinates has been removed.
+    The model emits two-point notation ``(x1,y1),(x2,y2)`` inside
+    ``<|box|>`` tags, which that pattern could never match, making it
+    silently useless. All parsing is therefore done through the tokenizer's
+    ``to_list_format`` helper, which handles the tag format correctly.
+    """
     try:
         parsed = tokenizer.to_list_format(response)
-        for item in parsed:
-            if isinstance(item, dict) and "box" in item:
+    except Exception:
+        return []
+
+    # to_list_format returns an interleaved list of dicts, e.g.:
+    #   [{"ref": "Lung nodule"}, {"box": "(20,30),(22,32)"}, ...]
+    # We walk the list and pair each box with the closest preceding ref label.
+    boxes: list[list[float]] = []
+    pending_label: str | None = None
+    for item in parsed:
+        if not isinstance(item, dict):
+            continue
+        if "ref" in item:
+            pending_label = item["ref"].strip().lower()
+        elif "box" in item:
+            if nodule_labels is None or pending_label in nodule_labels:
                 box = _parse_box_string(item["box"])
                 if box is not None:
                     boxes.append(box)
-    except Exception:
-        pass
+            # Reset after consumption so a stale label cannot bleed into a
+            # subsequent orphaned box.
+            pending_label = None
 
-    # Fallback: regex
-    if not boxes:
-        pattern = re.compile(
-            r"\(\s*([-+]?\d*\.?\d+)\s*,\s*([-+]?\d*\.?\d+)\s*,"
-            r"\s*([-+]?\d*\.?\d+)\s*,\s*([-+]?\d*\.?\d+)\s*\)"
-        )
-        for match in pattern.finditer(response):
-            box = _parse_box_string(",".join(match.groups()))
-            if box is not None:
-                boxes.append(box)
-
-    # Deduplicate
+    # Deduplicate while preserving order
     seen: set[tuple] = set()
     deduped: list[list[float]] = []
     for box in boxes:
@@ -326,16 +350,27 @@ def run_inference(
     cache_file: Path | None = None,
     low_percentile: float = 0.5,
     high_percentile: float = 95.5,
+    nodule_labels: set[str] | None = None,
 ) -> Path:
     """
     Run localisation inference on all images in *input_dir* and write
     ``localization_test_results.csv`` to *output_dir*.
+
+    Parameters
+    ----------
+    nodule_labels:
+        When provided, only ``<|ref|>`` labels whose lowercased text appears
+        in this set will produce output rows. Pass *None* to accept all labels.
 
     Returns the path of the written CSV.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     image_paths = collect_images(input_dir)
     print(f"Found {len(image_paths)} image(s) in: {input_dir}")
+    if nodule_labels is not None:
+        print(f"Label filter active — accepting: {sorted(nodule_labels)}")
+    else:
+        print("Label filter inactive — accepting all <|ref|> labels.")
 
     tokenizer, model = load_model()
 
@@ -380,7 +415,7 @@ def run_inference(
                 max_new_tokens=max_new_tokens,
             )
 
-            boxes_100 = parse_boxes_100(response, tokenizer)
+            boxes_100 = parse_boxes_100(response, tokenizer, nodule_labels=nodule_labels)
             boxes_px  = boxes100_to_px(boxes_100, width, height)
             points    = boxes_to_centers(boxes_px)
 
@@ -482,6 +517,18 @@ def parse_args() -> argparse.Namespace:
         default=95.5,
         help="Upper percentile for grayscale clipping (applied to all bit depths, default: 95.5).",
     )
+    parser.add_argument(
+        "--nodule_labels",
+        type=str,
+        default=None,
+        help=(
+            "Comma-separated list of <|ref|> label strings to accept as nodule "
+            "detections (case-insensitive). Boxes whose label does not match are "
+            "discarded. Omit this flag to accept all labels.\n"
+            f"Example: --nodule_labels \"lung nodule,nodule\"\n"
+            f"Default accepted labels when flag is used: {sorted(DEFAULT_NODULE_LABELS)}"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -495,6 +542,22 @@ def main() -> None:
         )
         sys.exit(1)
 
+    # Parse nodule label filter
+    nodule_labels: set[str] | None = None
+    if args.nodule_labels is not None:
+        nodule_labels = {
+            label.strip().lower()
+            for label in args.nodule_labels.split(",")
+            if label.strip()
+        }
+        if not nodule_labels:
+            print(
+                "ERROR: --nodule_labels was provided but parsed to an empty set. "
+                "Check the comma-separated values.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
     run_inference(
         input_dir=args.input_dir,
         output_dir=args.output_dir,
@@ -502,6 +565,7 @@ def main() -> None:
         cache_file=args.cache_file,
         low_percentile=args.low_percentile,
         high_percentile=args.high_percentile,
+        nodule_labels=nodule_labels,
     )
 
 

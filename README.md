@@ -24,22 +24,22 @@ The dataset is heavily imbalanced, with approximately 95% negative (healthy) and
 - **Rotating balanced epoch sampler**: At each training epoch, all positive samples are included alongside a rotating, non-overlapping subset of negative samples of equal size. This ensures the model sees all negatives across epochs while maintaining a 1:1 class ratio within each epoch, avoiding both data waste and persistent imbalance.
 
 #### Training configuration
-- *Loss function:* Weighted cross-entropy (positive weight = 20, negative weight = 1); optional focal loss support was implemented but not used in the final configuration.
+- **Loss function:** Weighted cross-entropy (positive weight = 20, negative weight = 1)
 
-- *Optimizer:* AdamW (fused)
+- **Optimizer:** AdamW (fused)
 
-- *Learning rate scheduler:* Linear warmup (3% of steps) followed by linear decay; peak LR = 2×10⁻⁴
+- **Learning rate scheduler:** Linear warmup (3% of steps) followed by linear decay; peak LR = 2×10⁻⁴
 
-- *Evaluation metrics:* Accuracy, balanced accuracy, sensitivity (recall), specificity, precision, F1, MCC, ROC-AUC, PR-AUC, Brier score.
+- **Evaluation metrics:** Accuracy, balanced accuracy, sensitivity (recall), specificity, precision, F1, MCC, ROC-AUC, PR-AUC, Brier score.
 
 #### Computational resources
-- *Parameters:* ~4B (base) + ~100M (QLoRA adapter)
+- **Parameters:** ~4B (base) + ~100M (QLoRA adapter)
 
-- *Hardware:* NVIDIA GeForce RTX 4090 (24GB VRAM)
+- **Hardware:** NVIDIA GeForce RTX 4090 (24GB VRAM)
 
-- *Training time:* ~35 hours
+- **Training time:** ~35 hours
 
-- *Inference time:* **[FILL IN]** seconds per image, using ~10GB VRAM on RTX 4090
+- **Inference time:** **[FILL IN]** seconds per image, using ~10GB VRAM on RTX 4090
 
 ### Localization Task – CheXagent-2 (Zero-shot)
 
@@ -50,15 +50,15 @@ CheXagent-2 is a 3B-parameter vision-language model specialized for chest X-ray 
 Input images are clipped to [0.5, 99.5] pixel value percentiles and then normalized to [0, 255] in order to increase contrast in the image.
 
 #### Training configuration
-*Loss function / Optimizer / LR scheduler:* N/A (zero-shot inference only)
+- *Loss function / Optimizer / LR scheduler:* N/A (zero-shot inference only)
 
-*Evaluation metrics:* **[FILL IN – e.g. IoU, localization accuracy, etc.]**
+- *Evaluation metrics:* **[FILL IN – e.g. IoU, localization accuracy, etc.]**
 
 #### Computational resources
 - *Parameters:* 3B
 - *Hardware:* NVIDIA GeForce RTX 4090 (24GB VRAM)
 - *Training time:* N/A
-- *Inference time:* **[FILL IN]** seconds per image, using ~10GB VRAM on RTX 4090
+- *Inference time:* 1 second per image, using ~10GB VRAM on RTX 4090
 
 ## How to Run
 ### Classification Task — MedGemma 1.5 
