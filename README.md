@@ -35,6 +35,8 @@ Team members:
 Vision-language models (VLMs) for chest X-ray analysis have rapidly become a strong research trend, especially for tasks such as report generation, abnormality classification, and localization. Motivated by this recent progress, our goal in this project was to evaluate whether modern medical VLMs can be effectively transferred to the NoduLoCC2026 challenge tasks, and how they behave under the practical constraints imposed by the challenge: severe class imbalance, limited localization annotations, and distribution shift between training and test data.
 
 ### Classification Task – Fine-tuned MedGemma 1.5
+For the classification task, we tested both zero-shot and fine-tuned versions of multiple VLMs and baseline CNNs such as CheXOne, CheXagent, CheXagent-2, DINOv3 and models from the EfficientNet family. Of these, MedGemma 1.5 showed the best precision-recall tradeoff and F1 score at the 0.5 decision threshold on our test set.
+
 #### Model
 MedGemma 1.5 is a 4B-parameter vision-language model developed by Google, built on the Gemma 3 architecture. Its vision component uses a SigLIP image encoder pre-trained on de-identified medical data including chest X-rays, while the LLM component was further trained on diverse medical corpora. All input images are normalized to 896×896 pixels. The model was selected over alternatives based on its best precision-recall tradeoff and F1 score at the 0.5 decision threshold during our model selection experiments.
 
@@ -68,7 +70,10 @@ The table below summarizes the performance of the fine-tuned MedGemma 1.5 model 
 
 | Model | Precision | Recall | Specificity | F1    | ROC AUC | PR AUC |
 | --------------- | --------- | ------ | ----------- | ----- | ------- | ------ |
-| MedGemma 1.5    | 0.374     | 0.3621 | 0.9728      | 0.368 | 0.7864  | 0.2384 |
+| MedGemma 1.5 Zero-shot | 0.1087    | 0.1478 | 0.9457      | 0.1253 | 0.6913  | 0.085   |
+| MedGemma 1.5 Fine-tuned    | 0.374     | 0.3621 | 0.9728      | 0.368 | 0.7864  | 0.2384 |
+
+These results indicate that fine-tuning MedGemma 1.5 with QLoRA significantly improved its ability to detect nodules, increasing precision from 10.87% to 37.4% and recall from 14.78% to 36.21%. The specificity also improved, indicating fewer false positives. The F1 score more than doubled, and both ROC AUC and PR AUC showed substantial gains, demonstrating better overall discrimination between classes. However, the model still faces challenges in achieving high sensitivity, which is critical for clinical applications.
 
 #### Computational resources
 - **Parameters:** ~4B (base) + ~100M (QLoRA adapter)
@@ -80,6 +85,9 @@ The table below summarizes the performance of the fine-tuned MedGemma 1.5 model 
 - **Inference time:** 2.5 seconds per image with batch size 1, using ~10GB VRAM on RTX 4090
 
 ### Localization Task – CheXagent-2 (Zero-shot)
+The main challenge in the localization task was the limited number of annotated keypoints (179 across 113 images) and the distribution shift between training and test data. We attempted to fine-tune CheXagent-2 and other VLMs and CNNs on the provided training set, but all models quickly overfitted due to the small number of positive samples and the large domain gap. 
+
+Given these constraints, we opted to evaluate CheXagent-2 in a zero-shot setting, without any additional fine-tuning on the provided dataset. This allowed us to leverage the model's pre-trained knowledge and generalization capabilities, while avoiding overfitting on the limited training data.
 
 #### Model
 CheXagent-2 is a 3B-parameter vision-language model specialized for chest X-ray interpretation. It uses a fine-tuned SigLIP model as its vision encoder and a fine-tuned Phi-2 (2.7B) model as its language decoder, connected via a LLaVA-style MLP connector. The model was trained on CheXinstruct, a large-scale CXR dataset covering 35 tasks, and has demonstrated strong performance on localization and other CXR interpretation tasks. We use it zero-shot — no additional fine-tuning was performed.
@@ -90,7 +98,30 @@ Input images are clipped to [0.5, 99.5] pixel value percentiles and then normali
 #### Training configuration
 - *Loss function / Optimizer / LR scheduler:* N/A (zero-shot inference only)
 
-- *Evaluation metrics:* **[FILL IN – e.g. IoU, localization accuracy, etc.]**
+#### Evaluation
+We evaluated the zero-shot localization performance using threshold-aware bipartite matching between predicted and ground-truth keypoints. For each image, a predicted point could only be matched to a ground-truth point if their Euclidean distance was within a predefined threshold. Among all valid assignments, the matching maximized the number of matched pairs first and then favored smaller distances.
+
+Two distance thresholds were used, both defined as fractions of the image diagonal:
+
+- Tight threshold: \(0.02 \times\) image diagonal
+- Tolerant threshold: \(0.05 \times\) image diagonal
+
+The reported metrics were:
+
+- TP / FP / FN
+- Precision, Recall, and F1-score
+- PCK (Percentage of Correct Keypoints)
+- Mean Radial Error (MRE) ± standard deviation, in pixels
+- Median Radial Error, in pixels
+
+On the evaluation set, the model was tested on 113 images, containing 179 ground-truth keypoints and 53 predicted keypoints in total. The results are summarized below:
+
+| Threshold | TP | FP | FN | Precision | Recall | F1 | PCK | MRE ± std (px) | Median RE (px) |
+| --------- | -- | -- | -- | --------- | ------ | -- | --- | -------------- | -------------- |
+| Tight (\(0.02 \times\) diag) | 10 | 43 | 169 | 0.1887 | 0.0559 | 0.0862 | 0.0559 | 35.10 ± 14.39 | 36.42 |
+| Tolerant (\(0.05 \times\) diag) | 28 | 25 | 151 | 0.5283 | 0.1564 | 0.2414 | 0.1564 | 73.58 ± 36.33 | 66.73 |
+
+These results indicate that CheXagent-2, when used zero-shot, was able to localize a limited subset of nodules with moderate precision under the tolerant threshold, but overall recall remained low. This suggests that although the model can sometimes identify plausible lesion locations without task-specific fine-tuning, its sensitivity is still insufficient for reliable standalone localization in the challenge setting.
 
 #### Computational resources
 - *Parameters:* 3B
