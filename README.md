@@ -32,7 +32,7 @@ Team members:
 
 ## Method Summary
 
-Vision-language models (VLMs) for chest X-ray analysis have rapidly become a strong research trend, especially for tasks such as report generation, abnormality classification, and weakly supervised localization. Motivated by this recent progress, our goal in this project was to evaluate whether modern medical VLMs can be effectively transferred to the NoduLoCC2026 challenge tasks, and how they behave under the practical constraints imposed by the challenge: severe class imbalance, limited localization supervision, and distribution shift between training and test data.
+Vision-language models (VLMs) for chest X-ray analysis have rapidly become a strong research trend, especially for tasks such as report generation, abnormality classification, and localization. Motivated by this recent progress, our goal in this project was to evaluate whether modern medical VLMs can be effectively transferred to the NoduLoCC2026 challenge tasks, and how they behave under the practical constraints imposed by the challenge: severe class imbalance, limited localization annotations, and distribution shift between training and test data.
 
 ### Classification Task – Fine-tuned MedGemma 1.5
 #### Model
