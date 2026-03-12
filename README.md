@@ -53,7 +53,7 @@ The table below summarizes the performance of the fine-tuned MedGemma 1.5 model 
 
 - **Training time:** ~35 hours
 
-- **Inference time:** **[FILL IN]** seconds per image, using ~10GB VRAM on RTX 4090
+- **Inference time:** 2.5 seconds per image with batch size 1, using ~10GB VRAM on RTX 4090
 
 ### Localization Task – CheXagent-2 (Zero-shot)
 
@@ -72,7 +72,7 @@ Input images are clipped to [0.5, 99.5] pixel value percentiles and then normali
 - *Parameters:* 3B
 - *Hardware:* NVIDIA GeForce RTX 4090 (24GB VRAM)
 - *Training time:* N/A
-- *Inference time:* 1 second per image, using ~10GB VRAM on RTX 4090
+- *Inference time:* 1 second per image with batch size 1, using ~10GB VRAM on RTX 4090
 
 ## How to Run
 ### Classification Task — MedGemma 1.5 
