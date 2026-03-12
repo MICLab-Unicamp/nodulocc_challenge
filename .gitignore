@@ -3,3 +3,4 @@ checkpoints/*
 !.gitkeep
 .env
 *.csv
+.vscode
