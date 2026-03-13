@@ -1,5 +1,6 @@
 # NoduLoCC2026 Challenge - Team MICLAB
-Submission for the [NoduLoCC2026 Challenge](https://gt-i2mdp.github.io/website/nodule_challenge.html).
+Team MICLAB's submission to the [NoduLoCC2026 Challenge](https://gt-i2mdp.github.io/website/nodule_challenge.html).
+
 Team members:
 - Kristhian André Oliveira Aguilar (k298976@dac.unicamp.br)
 - Diedre Santos do Carmo (diedre@unicamp.br)
