@@ -207,3 +207,4 @@ pip install -r localization_task/requirements.txt
 #### Inference
 ```bash
 python localization_task/inference.py --input_dir ./data/test_images --output_dir ./outputs
+```
