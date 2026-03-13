@@ -163,7 +163,7 @@ pip install -r classification_task/requirements.txt
 
 #### Inference
 ```bash
-python classification_task/inference.py --input-dir ./data/test_images --output-dir ./outputs
+python classification_task/inference.py --input_dir ./data/test_images --output_dir ./outputs
 ```
 
 #### Training
@@ -206,4 +206,4 @@ pip install -r localization_task/requirements.txt
 
 #### Inference
 ```bash
-python localization_task/inference.py --input-dir ./data/test_images --output-dir ./outputs
+python localization_task/inference.py --input_dir ./data/test_images --output_dir ./outputs
