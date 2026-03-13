@@ -18,6 +18,7 @@ Team members:
         - [Model](#model-1)
         - [Pre-processing and inference pipeline](#pre-processing-and-inference-pipeline)
         - [Training configuration](#training-configuration-1)
+        - [Evaluation](#evaluation-1)
         - [Computational resources](#computational-resources-1)
 - [How to Run](#how-to-run)
     - [Classification Task — MedGemma 1.5](#classification-task-—-medgemma-15)
